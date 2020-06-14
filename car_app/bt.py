@@ -50,18 +50,17 @@ def sendData (socket, time, distance):
     if distance < 1:
         distance = 1    
     
+    #format time using 3 decimals and add leading zeros
     time_formatted = "{:.3f}".format(time)
     time_formatted  = time_formatted.zfill(time_bytes)
-    print(time_formatted)
 
+    #format distance using 3 decimals and add leading zeros 
     distance_formatted = "{:.3f}".format(distance)
     distance_formatted  = distance_formatted.zfill(distance_bytes)
-    print(distance_formatted)
 
+    #compose the Bluetooth packet using the time, distance and delimiter
     packetBT = str(time_formatted) + ","  + str(distance_formatted)
     
-    ## add len check
-    print (packetBT)
     socket.send(packetBT)
     
     return 0
