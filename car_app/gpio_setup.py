@@ -158,7 +158,15 @@ def moveBackward():
 def moveNeutral():
     steering.set_PWM_dutycycle(PIN_THROTTLE, PWM_THROTTLE_NEUTRAL * PWM_FACTOR)
 
-
+def moveBrake(forward):
+    time_to_brake = 0.2
+    if forward:
+        moveBackward()
+    else:
+        moveForward()
+    time.sleep(time_to_brake)
+    moveNeutral()
+   
 def testSteering():
     print ("Steering Test started")
     print ("Steering: NEUTRAL")

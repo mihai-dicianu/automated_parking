@@ -1,17 +1,55 @@
 #Local imports
 from bt         import * 
 from gpio_setup import *
+
 import time
 import numpy as np
+import math
 
 timeList = []
 xList = []
 yList = []
 
-carSpeed = 26.66
-
+carSpeed = 58 #cm
+calibratedDistance = 15
 secondPress = False
-time_initial = None   
+time_initial = None
+pushes = 0
+
+Ri_min = 35
+Re_min = 64.7
+L_min  = 62.4
+e = 26
+p = 8
+w = 20
+'''
+Rmin_bar = Ri_min + w/2
+
+x_C1 = x_carLeft + p
+y_C1 = Rmin_bar + w/2
+
+x_t  = y_C1 + sqrt(Rmin_bar - (y_t - y_C1)**2)
+y_t  = (y_C1 + y_C2)/2
+
+x_C2 = x_s
+y_C2 = y_i - Rmin_bar
+
+x_s = 2*x_t - x_C1
+y_s = y_i
+'''
+def advanceCar(distance):
+    print("moving forward", distance)
+    
+    time_to_move = distance / carSpeed
+    print("time to move: ", time_to_move)
+    initial_time = time.time()
+    
+    moveForward()
+    while ((time.time() - initial_time) < time_to_move):
+        last_time = time.time()
+    moveBrake(True)
+    print ("Moved for time:", last_time-initial_time)
+    
 
 def isAproxEqual(distanceRef, distance):
     if(distance < distanceRef * 1.1 and distance > distanceRef * 0.9):
@@ -20,21 +58,29 @@ def isAproxEqual(distanceRef, distance):
         return False
 
 def areLastElementsEq():
-    if (isAproxEqual(yList[-1], yList[-2]) and isAproxEqual(yList[-1], yList[-3])):
-        return True
+    if (len (yList) > 3):
+        if (isAproxEqual(yList[-1], yList[-2]) and isAproxEqual(yList[-1], yList[-3])):
+            return True
+        else:
+            return False
     else:
         return False
-
 def findParkingSpot(calibrationDistance):
     #time.sleep(0.050)
-    moveForward()
+    
     firstEdge = False
     secondEdge = False
     emptyDistance = None
 
     time_initial = time.time()
+    iteration = 0
+    firstEdgeIndex = None
+    secondEdgeIndex = None
+    
+    moveForward()
     
     while True:
+        
         '''
         if isPressed() or distanceFront < 10:
             secondPress = not secondPress
@@ -52,39 +98,59 @@ def findParkingSpot(calibrationDistance):
         timeList.append(time_current)
         
         #check if the car hasn't passed the first parked car
-        if( not distanceRight < 10 and firstEdge == False and areLastElementsEq()):
+        if( not distanceRight < calibratedDistance and firstEdge == False and areLastElementsEq()):
             firstEdge = True
             print ("First edge detected")
             emptyDistance = distanceRight
-            print (yList)
+            #print (yList)
+            firstEdgeIndex = iteration
+            print("Second edge iteration is ", iteration)
+            print("First edge time is ", timeList[iteration])
             
         
-        if ( firstEdge and distanceRight < 10 and areLastElementsEq()):
+        if ( firstEdge and distanceRight < calibratedDistance and areLastElementsEq()):
             secondEdge = True
             print ("Second edge detected")
+            moveBackward()
+            time.sleep(0.2)
             moveNeutral()
-            return
-        '''
-        if (firstEdge and secondEdge):
-        
+            print ("Second edge time is ", timeList[iteration])
+            print("Second edge iteration is ", iteration)
+            secondEdgeIndex = iteration
+            print ("Parking spot length is  ", carSpeed * (timeList[secondEdgeIndex] - timeList[firstEdgeIndex]))
+            
             #calculate the numerical derivative of the lateral measurement
             derivative = np.diff(yList)/np.diff(xList)
             
             ind_MAX = np.argmax(derivative)
             ind_MIN = np.argmin(derivative)
-        '''
+            
+            print ("Derivative length is ", xList[ind_MIN] - xList[ind_MAX])
+            
+            return
+       
+        iteration += 1
        
 def buttonCallback(self):
-    print("Raspi button pushed: Initiate")
     
+    global pushes
+    
+    print("Button push detected")
+    print("Mode selected:", pushes)
     calibrationDistance = read_sensor('right')
     
     time.sleep(2)
     
-    findParkingSpot(calibrationDistance)
-  
+    if (pushes == 0):
+        findParkingSpot(calibrationDistance)
+    elif (pushes == 1):
+        advanceCar (40)
+        
     print("Callback ended, exiting subroutine")
+    pushes += 1
+    pushes = pushes % 2
     moveNeutral()
+    return 
      
 
     #close the Bluetooth socket
