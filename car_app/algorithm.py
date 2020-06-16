@@ -13,14 +13,21 @@ carSpeed = 26.66
 secondPress = False
 time_initial = None   
 
-def aproxEqual (distanceRef, distance):
-    if(distance < distanceRef * 1.1 and distance > distanceRef * 0.9)
+def isAproxEqual(distanceRef, distance):
+    if(distance < distanceRef * 1.1 and distance > distanceRef * 0.9):
+        return True
+    else:
+        return False
+
+def areLastElementsEq():
+    if (isAproxEqual(yList[-1], yList[-2]) and isAproxEqual(yList[-1], yList[-3])):
         return True
     else:
         return False
 
 def findParkingSpot(calibrationDistance):
-
+    #time.sleep(0.050)
+    moveForward()
     firstEdge = False
     secondEdge = False
     emptyDistance = None
@@ -28,11 +35,12 @@ def findParkingSpot(calibrationDistance):
     time_initial = time.time()
     
     while True:
+        '''
         if isPressed() or distanceFront < 10:
             secondPress = not secondPress
             moveNeutral()
             break
-            
+        '''    
         #distanceFront = read_sensor('front')
         #distanceBack  = read_sensor('back')
         distanceRight = read_sensor('right')
@@ -44,21 +52,27 @@ def findParkingSpot(calibrationDistance):
         timeList.append(time_current)
         
         #check if the car hasn't passed the first parked car
-        if( not aproxEqual(calibrationDistance, distanceRight) and firstEdge == False):
+        if( not distanceRight < 10 and firstEdge == False and areLastElementsEq()):
             firstEdge = True
-            emptyDistance = distanceRight        
+            print ("First edge detected")
+            emptyDistance = distanceRight
+            print (yList)
+            
         
-        if ( emptyDistance != None and firstEdge == True and not aproxEqual(emptyDistance, distanceRight) )
-            secondEdge = True 
-
-        if (firstEdge and secondEdge)
+        if ( firstEdge and distanceRight < 10 and areLastElementsEq()):
+            secondEdge = True
+            print ("Second edge detected")
+            moveNeutral()
+            return
+        '''
+        if (firstEdge and secondEdge):
         
             #calculate the numerical derivative of the lateral measurement
             derivative = np.diff(yList)/np.diff(xList)
             
             ind_MAX = np.argmax(derivative)
             ind_MIN = np.argmin(derivative)
-        
+        '''
        
 def buttonCallback(self):
     print("Raspi button pushed: Initiate")
@@ -79,15 +93,15 @@ def buttonCallback(self):
 try:
     gpioInit(buttonCallback)
     #create Bluetooth sockets and establish connection
-    socketRight, socketFront, socketBack = connectBluetooth()
+    #socketRight, socketFront, socketBack = connectBluetooth()
     
+    #print (isAproxEqual(1,0.9))
 
-
-    a = None
+    
     while True:
         time.sleep(10)
 
 finally:
     print('Application is ending!')
-    disconnectBluetooth()
+    #disconnectBluetooth()
     GPIO.cleanup()

@@ -19,8 +19,8 @@ PIN_STEERING = 26 #BCM
 PIN_THROTTLE = 19 #BCM
 
 PWM_STEERING_NEUTRAL = 9.5 # %
-PWM_STEERING_LEFT = 11 # %
-PWM_STEERING_RIGHT = 8 # %
+PWM_STEERING_LEFT = 11.3 # %
+PWM_STEERING_RIGHT = 8.2 # %
 
 PWM_THROTTLE_NEUTRAL = 9.1 # %
 #PWM_THROTTLE_FWD = 9.8 # %
@@ -91,15 +91,15 @@ def read_sensor(name):
     if name == 'right':
         PIN_TRIGGER = PIN_TRIG_RIGHT
         PIN_ECHO    = PIN_ECHO_RIGHT
-        print("Reading sensor (RIGHT)")
+        #print("Reading sensor (RIGHT)")
     elif name == 'front':
         PIN_TRIGGER = PIN_TRIG_FRONT
         PIN_ECHO    = PIN_ECHO_FRONT
-        print("Reading sensor (FRONT)")
+        #print("Reading sensor (FRONT)")
     elif name == 'back':
         PIN_TRIGGER = PIN_TRIG_BACK
         PIN_ECHO    = PIN_ECHO_BACK
-        print("Reading sensor (BACK)")
+        #print("Reading sensor (BACK)")
     else:
         print("ERROR in reading sensor (passing arg)")
     
@@ -108,11 +108,11 @@ def read_sensor(name):
 
     GPIO.output(PIN_TRIGGER, GPIO.LOW)
 
-    print("Waiting for sensor to settle")
+    #print("Waiting for sensor to settle")
 
    # time.sleep(2)
 
-    print("Calculating distance")
+    #print("Calculating distance")
 
     GPIO.output(PIN_TRIGGER, GPIO.HIGH)
 
@@ -132,8 +132,8 @@ def read_sensor(name):
 
     pulse_duration = pulse_end_time - pulse_start_time
     distance = round(pulse_duration * 17150, 2)
-    print("Distance:",distance,"cm")
-    print("Read time:",(time.time() - read_start_time)*1000,"ms")
+    #print("Distance:",distance,"cm")
+    #print("Read time:",(time.time() - read_start_time)*1000,"ms")
     #time.sleep(0.01)
    
     return distance
