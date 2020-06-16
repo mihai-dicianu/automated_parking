@@ -1,51 +1,75 @@
 #Local imports
 from bt         import * 
 from gpio_setup import *
-
 import time
+import numpy as np
 
-secondPress = False       
+timeList = []
+xList = []
+yList = []
 
-def buttonCallback(self):
-    print("Raspi button pushed: Initiate")
-    
-    global secondPress
-    if secondPress:
-        return
-    
-    time.sleep(2)
-    
-    moveForward()
-    
+carSpeed = 26.66
+
+secondPress = False
+time_initial = None   
+
+def aproxEqual (distanceRef, distance):
+    if(distance < distanceRef * 1.1 and distance > distanceRef * 0.9)
+        return True
+    else:
+        return False
+
+def findParkingSpot(calibrationDistance):
+
+    firstEdge = False
+    secondEdge = False
+    emptyDistance = None
+
     time_initial = time.time()
     
     while True:
-        if isPressed():
+        if isPressed() or distanceFront < 10:
             secondPress = not secondPress
+            moveNeutral()
             break
-        
+            
         #distanceFront = read_sensor('front')
         #distanceBack  = read_sensor('back')
         distanceRight = read_sensor('right')
         
-        '''
-        if distanceBack < 10 or distanceFront < 10:
-            #moveForward()
-            #time.sleep(0.5)
-            print ("OooO")
-            break
-        '''
-        time_delta_current = time.time() - time_initial
+        time_current = time.time() - time_initial
+        
+        xList.append(time_current*carSpeed)
+        yList.append(distanceRight)
+        timeList.append(time_current)
+        
+        #check if the car hasn't passed the first parked car
+        if( not aproxEqual(calibrationDistance, distanceRight) and firstEdge == False):
+            firstEdge = True
+            emptyDistance = distanceRight        
+        
+        if ( emptyDistance != None and firstEdge == True and not aproxEqual(emptyDistance, distanceRight) )
+            secondEdge = True 
 
-        #time.sleep(0.01)
-        #sendData(socketRight, time_delta_current, distanceRight)
-        #sendData(socketFront, 0, 1)
-        #sendData(socketBack, 10, 10)
+        if (firstEdge and secondEdge)
+        
+            #calculate the numerical derivative of the lateral measurement
+            derivative = np.diff(yList)/np.diff(xList)
+            
+            ind_MAX = np.argmax(derivative)
+            ind_MIN = np.argmin(derivative)
+        
+       
+def buttonCallback(self):
+    print("Raspi button pushed: Initiate")
     
+    calibrationDistance = read_sensor('right')
     
+    time.sleep(2)
+    
+    findParkingSpot(calibrationDistance)
   
-  
-    print("DIED")
+    print("Callback ended, exiting subroutine")
     moveNeutral()
      
 
