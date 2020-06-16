@@ -5,12 +5,14 @@ from gpio_setup import *
 import time
 import numpy as np
 import math
+from math import sqrt
+
 
 timeList = []
 xList = []
 yList = []
 
-carSpeed = 58 #cm
+carSpeed = 46 #cm
 calibratedDistance = 15
 secondPress = False
 time_initial = None
@@ -22,34 +24,79 @@ L_min  = 62.4
 e = 26
 p = 8
 w = 20
-'''
+
 Rmin_bar = Ri_min + w/2
 
-x_C1 = x_carLeft + p
-y_C1 = Rmin_bar + w/2
+parkingWidth = None
+ind_MAX = None
+ind_MIN = None
 
-x_t  = y_C1 + sqrt(Rmin_bar - (y_t - y_C1)**2)
-y_t  = (y_C1 + y_C2)/2
+def getAngle(a, b, c):
+    ang = math.degrees(math.atan2(c[1]-b[1], c[0]-b[0]) - math.atan2(a[1]-b[1], a[0]-b[0]))
+    return ang + 360 if ang < 0 else ang
 
-x_C2 = x_s
-y_C2 = y_i - Rmin_bar
 
-x_s = 2*x_t - x_C1
-y_s = y_i
-'''
-def advanceCar(distance):
+def advanceCar(distance, forward):
     print("moving forward", distance)
     
     time_to_move = distance / carSpeed
     print("time to move: ", time_to_move)
     initial_time = time.time()
-    
-    moveForward()
+    if forward:
+        moveForward()
+    else:
+        moveBackward()
     while ((time.time() - initial_time) < time_to_move):
         last_time = time.time()
     moveBrake(True)
     print ("Moved for time:", last_time-initial_time)
     
+def parkCar ():
+    
+    print("Distance to parking spot", parkingWidth)
+    
+    x_C1 = xList[ind_MAX] + p
+    y_C1 = Rmin_bar + w/2
+    
+    y_s = parkingWidth
+    y_C2 = y_s - Rmin_bar
+    y_t  = (y_C1 + y_C2)/2
+    x_t  = y_C1 + sqrt(Rmin_bar**2 - (y_t - y_C1)**2)
+    x_s = 2*x_t - x_C1
+    x_C2 = x_s
+    
+    diameter_C1 = math.hypot(x_t-x_C1, y_t-y_C1)
+    diameter_C2 = math.hypot(x_C2 - x_t, y_C2 - y_t)
+    
+    angle_C1 = getAngle([x_t,y_t],[x_C1,y_C1],[x_C1,y_C1 - Rmin_bar])
+    angle_C2 = getAngle([x_t,y_t],[x_C2,y_C2],[x_s,y_s])
+    
+    arc_length_C1 = (pi*diameter_C1) * (angle_C1/360)
+    arc_length_C2 = (pi*diameter_C2) * (angle_C2/360)
+    
+   #print("C1 diameter:", diameter_C1)
+    
+    print("x_C1:", x_C1, "; y_C1:", y_C1)
+    print("x_C2:", x_C2, "; y_C2:", y_C2)
+    print("x_s:", x_s, "; y_s:", y_s)
+    print("x_t:", x_t, "; y_t:", y_t)
+    
+    print("Arc length C1:", arc_length_C1)
+    print("Arc length C2:", arc_length_C2)
+    
+    steerRight()
+    time.sleep(1)
+    advanceCar(40, False)
+    moveBrake(False)
+    
+    time.sleep(1)
+    steerLeft()
+    time.sleep(1)
+    advanceCar(40, False)
+    moveBrake(False)
+    
+    time.sleep(1)
+    steerNeutral()    
 
 def isAproxEqual(distanceRef, distance):
     if(distance < distanceRef * 1.1 and distance > distanceRef * 0.9):
@@ -67,10 +114,11 @@ def areLastElementsEq():
         return False
 def findParkingSpot(calibrationDistance):
     #time.sleep(0.050)
+    global ind_MAX, ind_MIN, parkingWidth, xList, yList, timeList
     
     firstEdge = False
     secondEdge = False
-    emptyDistance = None
+    
 
     time_initial = time.time()
     iteration = 0
@@ -101,8 +149,7 @@ def findParkingSpot(calibrationDistance):
         if( not distanceRight < calibratedDistance and firstEdge == False and areLastElementsEq()):
             firstEdge = True
             print ("First edge detected")
-            emptyDistance = distanceRight
-            #print (yList)
+            parkingWidth = distanceRight
             firstEdgeIndex = iteration
             print("Second edge iteration is ", iteration)
             print("First edge time is ", timeList[iteration])
@@ -111,9 +158,7 @@ def findParkingSpot(calibrationDistance):
         if ( firstEdge and distanceRight < calibratedDistance and areLastElementsEq()):
             secondEdge = True
             print ("Second edge detected")
-            moveBackward()
-            time.sleep(0.2)
-            moveNeutral()
+            moveBrake(True)
             print ("Second edge time is ", timeList[iteration])
             print("Second edge iteration is ", iteration)
             secondEdgeIndex = iteration
@@ -126,6 +171,8 @@ def findParkingSpot(calibrationDistance):
             ind_MIN = np.argmin(derivative)
             
             print ("Derivative length is ", xList[ind_MIN] - xList[ind_MAX])
+            
+            
             
             return
        
@@ -144,11 +191,15 @@ def buttonCallback(self):
     if (pushes == 0):
         findParkingSpot(calibrationDistance)
     elif (pushes == 1):
-        advanceCar (40)
-        
+        parkCar()
+    elif (pushes == 2):
+        pass
+    '''
+    parkCar()
+    '''
     print("Callback ended, exiting subroutine")
     pushes += 1
-    pushes = pushes % 2
+    pushes = pushes % 3
     moveNeutral()
     return 
      
