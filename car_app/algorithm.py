@@ -6,6 +6,7 @@ import time
 import numpy as np
 import math
 from math import sqrt
+from math import pi
 
 
 timeList = []
@@ -58,24 +59,27 @@ def parkCar ():
     x_C1 = xList[ind_MAX] + p
     y_C1 = Rmin_bar + w/2
     
-    y_s = parkingWidth
+    #y_s  = parkingWidth + w/2
+    y_s  = parkingWidth
     y_C2 = y_s - Rmin_bar
     y_t  = (y_C1 + y_C2)/2
     x_t  = y_C1 + sqrt(Rmin_bar**2 - (y_t - y_C1)**2)
-    x_s = 2*x_t - x_C1
+    x_s  = 2*x_t - x_C1
     x_C2 = x_s
     
     diameter_C1 = math.hypot(x_t-x_C1, y_t-y_C1)
     diameter_C2 = math.hypot(x_C2 - x_t, y_C2 - y_t)
     
-    angle_C1 = getAngle([x_t,y_t],[x_C1,y_C1],[x_C1,y_C1 - Rmin_bar])
-    angle_C2 = getAngle([x_t,y_t],[x_C2,y_C2],[x_s,y_s])
+    angle_C1 = getAngle([x_C1,y_C1 - Rmin_bar],[x_C1,y_C1],[x_t,y_t])
+    print ("C1 angle is ", angle_C1)
+    angle_C2 = getAngle([x_s,y_s],[x_C2,y_C2],[x_t,y_t],)
+    print ("C2 angle is ", angle_C2)
     
     arc_length_C1 = (pi*diameter_C1) * (angle_C1/360)
     arc_length_C2 = (pi*diameter_C2) * (angle_C2/360)
     
-   #print("C1 diameter:", diameter_C1)
-    
+    print("C1 diameter:", diameter_C1)
+    print("C2 diameter:", diameter_C2)
     print("x_C1:", x_C1, "; y_C1:", y_C1)
     print("x_C2:", x_C2, "; y_C2:", y_C2)
     print("x_s:", x_s, "; y_s:", y_s)
@@ -86,13 +90,13 @@ def parkCar ():
     
     steerRight()
     time.sleep(1)
-    advanceCar(40, False)
+    advanceCar(35, False)
     moveBrake(False)
     
     time.sleep(1)
     steerLeft()
     time.sleep(1)
-    advanceCar(40, False)
+    advanceCar(35, False)
     moveBrake(False)
     
     time.sleep(1)
@@ -185,7 +189,7 @@ def buttonCallback(self):
     print("Button push detected")
     print("Mode selected:", pushes)
     calibrationDistance = read_sensor('right')
-    
+   
     time.sleep(2)
     
     if (pushes == 0):
@@ -199,7 +203,7 @@ def buttonCallback(self):
     '''
     print("Callback ended, exiting subroutine")
     pushes += 1
-    pushes = pushes % 3
+    pushes = pushes % 2
     moveNeutral()
     return 
      
