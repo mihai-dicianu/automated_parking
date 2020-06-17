@@ -19,8 +19,8 @@ secondPress = False
 time_initial = None
 pushes = 0
 
-Ri_min = 35
-Re_min = 64.7
+Ri_min = 46
+Re_min = 73
 L_min  = 62.4
 e = 26
 p = 8
@@ -36,6 +36,25 @@ def getAngle(a, b, c):
     ang = math.degrees(math.atan2(c[1]-b[1], c[0]-b[0]) - math.atan2(a[1]-b[1], a[0]-b[0]))
     return ang + 360 if ang < 0 else ang
 
+def positionMiddle():
+    
+    time_init = time.time()
+    while True:
+        time_current = time.time()
+        distanceFront = read_sensor('front')
+        distanceBack  = read_sensor('back')
+        
+        sendData(socketFront, time_current - time_init, distanceFront)
+        sendData(socketBack, time_current - time_init, distanceBack)
+
+
+        if(isAproxEqual(distanceFront, distanceBack)):
+           moveNeutral()
+           break
+        elif (distanceFront > distanceBack):
+           moveForward()
+        else:
+           moveBackward()
 
 def advanceCar(distance, forward):
     print("moving forward", distance)
@@ -90,13 +109,13 @@ def parkCar ():
     
     steerRight()
     time.sleep(1)
-    advanceCar(35, False)
+    advanceCar(50, False)
     moveBrake(False)
     
-    time.sleep(1)
+    #time.sleep(1)
     steerLeft()
-    time.sleep(1)
-    advanceCar(35, False)
+    #time.sleep(1)
+    advanceCar(50, False)
     moveBrake(False)
     
     time.sleep(1)
@@ -144,6 +163,7 @@ def findParkingSpot(calibrationDistance):
         distanceRight = read_sensor('right')
         
         time_current = time.time() - time_initial
+        sendData(socketRight, time_current, distanceRight)
         
         xList.append(time_current*carSpeed)
         yList.append(distanceRight)
@@ -193,17 +213,18 @@ def buttonCallback(self):
     time.sleep(2)
     
     if (pushes == 0):
-        findParkingSpot(calibrationDistance)
+        positionMiddle()
+        #findParkingSpot(calibrationDistance)
     elif (pushes == 1):
-        parkCar()
+        advanceCar(20,True)
     elif (pushes == 2):
-        pass
+        parkCar()
     '''
     parkCar()
     '''
     print("Callback ended, exiting subroutine")
     pushes += 1
-    pushes = pushes % 2
+    pushes = pushes % 3
     moveNeutral()
     return 
      
@@ -214,7 +235,7 @@ def buttonCallback(self):
 try:
     gpioInit(buttonCallback)
     #create Bluetooth sockets and establish connection
-    #socketRight, socketFront, socketBack = connectBluetooth()
+    socketRight, socketFront, socketBack = connectBluetooth()
     
     #print (isAproxEqual(1,0.9))
 

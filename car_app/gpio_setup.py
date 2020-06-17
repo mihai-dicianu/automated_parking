@@ -134,7 +134,7 @@ def read_sensor(name):
     distance = round(pulse_duration * 17150, 2)
     #print("Distance:",distance,"cm")
     #print("Read time:",(time.time() - read_start_time)*1000,"ms")
-    #time.sleep(0.01)
+    time.sleep(0.01)
    
     return distance
        
