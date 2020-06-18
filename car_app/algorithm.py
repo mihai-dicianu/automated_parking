@@ -13,7 +13,7 @@ timeList = []
 xList = []
 yList = []
 
-carSpeed = 46 #cm
+carSpeed = 36.66 #cm
 calibratedDistance = 15
 secondPress = False
 time_initial = None
@@ -135,21 +135,23 @@ def areLastElementsEq():
             return False
     else:
         return False
+    
 def findParkingSpot(calibrationDistance):
     #time.sleep(0.050)
     global ind_MAX, ind_MIN, parkingWidth, xList, yList, timeList
     
-    firstEdge = False
+    firstEdge  = False
     secondEdge = False
-    
+    parkOK     = False
 
-    time_initial = time.time()
+    
     iteration = 0
     firstEdgeIndex = None
     secondEdgeIndex = None
     
     moveForward()
-    
+    #time.sleep(0.75)
+    time_initial = time.time()
     while True:
         
         '''
@@ -157,49 +159,84 @@ def findParkingSpot(calibrationDistance):
             secondPress = not secondPress
             moveNeutral()
             break
-        '''    
+        '''
+        
         #distanceFront = read_sensor('front')
         #distanceBack  = read_sensor('back')
         distanceRight = read_sensor('right')
         
         time_current = time.time() - time_initial
-        sendData(socketRight, time_current, distanceRight)
+        if(socketRight != None):
+            sendData(socketRight, time_current, distanceRight)
         
         xList.append(time_current*carSpeed)
         yList.append(distanceRight)
         timeList.append(time_current)
         
         #check if the car hasn't passed the first parked car
-        if( not distanceRight < calibratedDistance and firstEdge == False and areLastElementsEq()):
+        if( not distanceRight < calibratedDistance  and areLastElementsEq() and not firstEdge):
             firstEdge = True
             print ("First edge detected")
             parkingWidth = distanceRight
             firstEdgeIndex = iteration
-            print("Second edge iteration is ", iteration)
-            print("First edge time is ", timeList[iteration])
             
+            print("First edge iteration is ", iteration)
+            print("First edge time is ", timeList[iteration])
+            print("Currently at x:", xList[iteration])
         
-        if ( firstEdge and distanceRight < calibratedDistance and areLastElementsEq()):
+        if (firstEdge and distanceRight < calibratedDistance and areLastElementsEq() and not secondEdge):
             secondEdge = True
             print ("Second edge detected")
             moveBrake(True)
             print ("Second edge time is ", timeList[iteration])
             print("Second edge iteration is ", iteration)
             secondEdgeIndex = iteration
-            print ("Parking spot length is  ", carSpeed * (timeList[secondEdgeIndex] - timeList[firstEdgeIndex]))
+            print("Currently at x:", xList[iteration])
             
+            
+        if (firstEdge and secondEdge and not parkOK):
+            parkOK = True
+            print ("Parking spot length is  ", carSpeed * (timeList[secondEdgeIndex] - timeList[firstEdgeIndex]))
             #calculate the numerical derivative of the lateral measurement
             derivative = np.diff(yList)/np.diff(xList)
             
             ind_MAX = np.argmax(derivative)
             ind_MIN = np.argmin(derivative)
             
-            print ("Derivative length is ", xList[ind_MIN] - xList[ind_MAX])
-            
-            
-            
-            return
+            parkingLength = xList[ind_MIN] - xList[ind_MAX]
+            print ("Derivative length is ", parkingLength)
+                        
+            if(parkingLength > L_min):
+                print("Distance to parking spot", parkingWidth)
+    
+                x_C1 = xList[ind_MAX] + p
+                y_C1 = Rmin_bar + w/2
+                
+                #y_s  = parkingWidth + w/2
+                y_s  = parkingWidth
+                y_C2 = y_s - Rmin_bar
+                y_t  = (y_C1 + y_C2)/2
+                x_t  = y_C1 + sqrt(Rmin_bar**2 - (y_t - y_C1)**2)
+                x_s  = 2*x_t - x_C1
+                x_C2 = x_s
+                
+                print ("Start x is x_s", x_s)
+               
+                
+            else:
+                
+                print("Parking is too small")
+                return
        
+        if(parkOK):
+           
+            if (xList[-1] > x_s):
+                        print("arrived !")
+                        print("In time:", time_current)
+                        print ("last x is ", xList[-1])
+                        
+                        return
+
         iteration += 1
        
 def buttonCallback(self):
@@ -213,8 +250,8 @@ def buttonCallback(self):
     time.sleep(2)
     
     if (pushes == 0):
-        positionMiddle()
-        #findParkingSpot(calibrationDistance)
+        #positionMiddle()
+        findParkingSpot(calibrationDistance)
     elif (pushes == 1):
         advanceCar(20,True)
     elif (pushes == 2):
@@ -235,7 +272,7 @@ def buttonCallback(self):
 try:
     gpioInit(buttonCallback)
     #create Bluetooth sockets and establish connection
-    socketRight, socketFront, socketBack = connectBluetooth()
+    #socketRight, socketFront, socketBack = connectBluetooth()
     
     #print (isAproxEqual(1,0.9))
 
