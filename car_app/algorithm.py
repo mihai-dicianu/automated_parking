@@ -11,17 +11,18 @@ from math import pi
 
 timeList = []
 xList = []
+xListPark = []
 yList = []
 
 carSpeed = 36.66 #cm
-calibratedDistance = 15
 secondPress = False
 time_initial = None
 pushes = 0
+arcLength = 0
 
 Ri_min = 46
 Re_min = 73
-L_min  = 62.4
+L_min  = 66.4
 e = 26
 p = 8
 w = 20
@@ -71,51 +72,16 @@ def advanceCar(distance, forward):
     moveBrake(True)
     print ("Moved for time:", last_time-initial_time)
     
-def parkCar ():
-    
-    print("Distance to parking spot", parkingWidth)
-    
-    x_C1 = xList[ind_MAX] + p
-    y_C1 = Rmin_bar + w/2
-    
-    #y_s  = parkingWidth + w/2
-    y_s  = parkingWidth
-    y_C2 = y_s - Rmin_bar
-    y_t  = (y_C1 + y_C2)/2
-    x_t  = y_C1 + sqrt(Rmin_bar**2 - (y_t - y_C1)**2)
-    x_s  = 2*x_t - x_C1
-    x_C2 = x_s
-    
-    diameter_C1 = math.hypot(x_t-x_C1, y_t-y_C1)
-    diameter_C2 = math.hypot(x_C2 - x_t, y_C2 - y_t)
-    
-    angle_C1 = getAngle([x_C1,y_C1 - Rmin_bar],[x_C1,y_C1],[x_t,y_t])
-    print ("C1 angle is ", angle_C1)
-    angle_C2 = getAngle([x_s,y_s],[x_C2,y_C2],[x_t,y_t],)
-    print ("C2 angle is ", angle_C2)
-    
-    arc_length_C1 = (pi*diameter_C1) * (angle_C1/360)
-    arc_length_C2 = (pi*diameter_C2) * (angle_C2/360)
-    
-    print("C1 diameter:", diameter_C1)
-    print("C2 diameter:", diameter_C2)
-    print("x_C1:", x_C1, "; y_C1:", y_C1)
-    print("x_C2:", x_C2, "; y_C2:", y_C2)
-    print("x_s:", x_s, "; y_s:", y_s)
-    print("x_t:", x_t, "; y_t:", y_t)
-    
-    print("Arc length C1:", arc_length_C1)
-    print("Arc length C2:", arc_length_C2)
-    
+def parkCar (arcLength):
     steerRight()
     time.sleep(1)
-    advanceCar(50, False)
+    advanceCar(arcLength, False)
     moveBrake(False)
     
     #time.sleep(1)
     steerLeft()
     #time.sleep(1)
-    advanceCar(50, False)
+    advanceCar(arcLength, False)
     moveBrake(False)
     
     time.sleep(1)
@@ -136,18 +102,20 @@ def areLastElementsEq():
     else:
         return False
     
-def findParkingSpot(calibrationDistance):
-    #time.sleep(0.050)
-    global ind_MAX, ind_MIN, parkingWidth, xList, yList, timeList
+def findParkingSpot():
+
+    global ind_MAX, ind_MIN, parkingWidth, xList, yList, timeList, arcLength
     
     firstEdge  = False
     secondEdge = False
     parkOK     = False
-
     
     iteration = 0
     firstEdgeIndex = None
     secondEdgeIndex = None
+    
+    distanceThreshold = read_sensor('right') * 1.5
+    print("Starting parking maneuver, distance threshold is ", distanceThreshold, "cm.")
     
     moveForward()
     #time.sleep(0.75)
@@ -166,34 +134,40 @@ def findParkingSpot(calibrationDistance):
         distanceRight = read_sensor('right')
         
         time_current = time.time() - time_initial
+        
         if(socketRight != None):
             sendData(socketRight, time_current, distanceRight)
-        
+       
         xList.append(time_current*carSpeed)
         yList.append(distanceRight)
         timeList.append(time_current)
         
-        #check if the car hasn't passed the first parked car
-        if( not distanceRight < calibratedDistance  and areLastElementsEq() and not firstEdge):
+        #check if the car has passed the first parked car
+        if( not (distanceRight < distanceThreshold) and areLastElementsEq() and not firstEdge):
             firstEdge = True
-            print ("First edge detected")
             parkingWidth = distanceRight
             firstEdgeIndex = iteration
-            
+                             
+            print("First edge detected")            
             print("First edge iteration is ", iteration)
             print("First edge time is ", timeList[iteration])
             print("Currently at x:", xList[iteration])
+            print("Parking width is ", parkingWidth)
         
-        if (firstEdge and distanceRight < calibratedDistance and areLastElementsEq() and not secondEdge):
+        #check if the car has passed the parking spot
+        if (firstEdge and distanceRight < distanceThreshold and areLastElementsEq() and not secondEdge):
+            
             secondEdge = True
-            print ("Second edge detected")
             moveBrake(True)
-            print ("Second edge time is ", timeList[iteration])
-            print("Second edge iteration is ", iteration)
             secondEdgeIndex = iteration
+            
+            print("Second edge detected")
+            print("Second edge time is ", timeList[iteration])
+            print("Second edge iteration is ", iteration)
+            
             print("Currently at x:", xList[iteration])
             
-            
+        #calculate coordinates if parking spot is passed    
         if (firstEdge and secondEdge and not parkOK):
             parkOK = True
             print ("Parking spot length is  ", carSpeed * (timeList[secondEdgeIndex] - timeList[firstEdgeIndex]))
@@ -209,19 +183,40 @@ def findParkingSpot(calibrationDistance):
             if(parkingLength > L_min):
                 print("Distance to parking spot", parkingWidth)
     
-                x_C1 = xList[ind_MAX] + p
+                #x_C1 = xList[ind_MAX] + p
+                x_C1 = p
                 y_C1 = Rmin_bar + w/2
                 
                 #y_s  = parkingWidth + w/2
-                y_s  = parkingWidth
+                y_s  = parkingWidth + w/2
                 y_C2 = y_s - Rmin_bar
                 y_t  = (y_C1 + y_C2)/2
-                x_t  = y_C1 + sqrt(Rmin_bar**2 - (y_t - y_C1)**2)
+                x_t  = x_C1 + sqrt(Rmin_bar**2 - (y_t - y_C1)**2)
                 x_s  = 2*x_t - x_C1
                 x_C2 = x_s
+                             
+                diameter_C1 = math.hypot(x_t-x_C1, y_t-y_C1)
+                diameter_C2 = math.hypot(x_C2 - x_t, y_C2 - y_t)
                 
-                print ("Start x is x_s", x_s)
-               
+                angle_C1 = getAngle([x_C1,y_C1 - Rmin_bar],[x_C1,y_C1],[x_t,y_t])
+                print ("C1 angle is ", angle_C1)
+                angle_C2 = getAngle([x_s,y_s],[x_C2,y_C2],[x_t,y_t],)
+                print ("C2 angle is ", angle_C2)
+                
+                arc_length_C1 = (pi*diameter_C1) * (angle_C1/360)
+                arc_length_C2 = (pi*diameter_C2) * (angle_C2/360)
+                
+                print("C1 diameter:", diameter_C1)
+                print("C2 diameter:", diameter_C2)
+                print("x_C1:", x_C1, "; y_C1:", y_C1)
+                print("x_C2:", x_C2, "; y_C2:", y_C2)
+                print("x_s:", x_s, "; y_s:", y_s)
+                print("x_t:", x_t, "; y_t:", y_t)
+                
+                print("Arc length C1:", arc_length_C1)
+                print("Arc length C2:", arc_length_C2)
+                
+                arcLength = arc_length_C1
                 
             else:
                 
@@ -230,7 +225,7 @@ def findParkingSpot(calibrationDistance):
        
         if(parkOK):
            
-            if (xList[-1] > x_s):
+            if (xList[-1] - xList[ind_MAX] > x_s):
                         print("arrived !")
                         print("In time:", time_current)
                         print ("last x is ", xList[-1])
@@ -238,30 +233,32 @@ def findParkingSpot(calibrationDistance):
                         return
 
         iteration += 1
-       
+    
+   
+           
 def buttonCallback(self):
     
     global pushes
     
     print("Button push detected")
     print("Mode selected:", pushes)
-    calibrationDistance = read_sensor('right')
    
     time.sleep(2)
     
     if (pushes == 0):
         #positionMiddle()
-        findParkingSpot(calibrationDistance)
+        findParkingSpot()
     elif (pushes == 1):
-        advanceCar(20,True)
-    elif (pushes == 2):
-        parkCar()
+        parkCar(arcLength)
+        #advanceCar(20,True)
+    #elif (pushes == 2):
+        
     '''
     parkCar()
     '''
     print("Callback ended, exiting subroutine")
     pushes += 1
-    pushes = pushes % 3
+    pushes = pushes % 2
     moveNeutral()
     return 
      
